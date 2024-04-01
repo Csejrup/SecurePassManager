@@ -7,22 +7,7 @@ namespace SecurePassManager.Handlers.MenuHandler
     public class MenuHandler(ICryptoService cryptoService, IFileService fileService, ICredentialService credentialsService)
         : IMenuHandler
     {
-        public void Initialize()
-        {
-            // Check if the encryption key exists, generate and save if not
-            const string keyFilePath = @"key.txt";
-            if (!fileService.FileExists(keyFilePath))
-            {
-                Console.WriteLine("Encryption key file not found, generating a new one...");
-                cryptoService.GenerateAndSaveKey();
-                Console.WriteLine("New encryption key generated and saved.");
-            }
-            else
-            {
-                Console.WriteLine("Using existing encryption key.");
-            }
-        }
-
+      
         public void RunMenuLoop()
         {
             while (true)
@@ -42,7 +27,7 @@ namespace SecurePassManager.Handlers.MenuHandler
             }
         }
 
-        private void DisplayMenu()
+        private static void DisplayMenu()
         {
             Console.WriteLine("1. Add New Credential");
             Console.WriteLine("2. List Credentials");

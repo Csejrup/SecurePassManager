@@ -4,6 +4,7 @@ using SecurePassManager.Services.CryptographyService;
 using SecurePassManager.Handlers.MenuHandler;
 using SecurePassManager.Services.CredentialService;
 using SecurePassManager.Services.FileService;
+using SecurePassManager.Services.MasterPasswordService;
 
 namespace SecurePassManager
 {
@@ -11,7 +12,6 @@ namespace SecurePassManager
     {
         private void Run()
         {
-            menuHandler.Initialize();
             menuHandler.RunMenuLoop();
         }
 
@@ -20,7 +20,8 @@ namespace SecurePassManager
             var dbContext = new AppDbContext();
             var cryptoService = new CryptoService();
             var fileService = new FileService();
-            var credentialService = new CredentialService(dbContext, cryptoService);
+            var masterPasswordService = new MasterPasswordService();
+            var credentialService = new CredentialService(dbContext,  masterPasswordService,cryptoService);
             var menuHandler = new MenuHandler( cryptoService, fileService, credentialService );
 
             var program = new Program(menuHandler);

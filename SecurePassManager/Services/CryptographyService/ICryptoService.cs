@@ -7,10 +7,7 @@ namespace SecurePassManager.Services.CryptographyService
         void GenerateAndSaveKey();
         string GenerateStrongPassword(int length);
         byte[] EncryptPassword(string password, byte[] key);
-        string DecryptPassword(string password, byte[] key);
-        byte[] HashDataUsingSha512(string data);
-        byte[] CreateHmacSha256(byte[] data, byte[] key);
-
-        byte[] ReadKeyFromFile();
+        string DecryptPassword(byte[] encryptedData, byte[] key);
+        byte[] GenerateKeyFromPassword(string password);
     }
 }

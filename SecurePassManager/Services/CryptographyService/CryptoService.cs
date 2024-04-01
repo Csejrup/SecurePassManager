@@ -7,34 +7,22 @@ namespace SecurePassManager.Services.CryptographyService
     {
         public (byte[], byte[]) GenerateKeyAndIv()
         {
-            var key = RandomNumberGenerator.GetBytes(32); // 256 bits for AES-256
-            var iv = RandomNumberGenerator.GetBytes(12); // 96 bits is standard for GCM nonce
+            var key = RandomNumberGenerator.GetBytes(32);
+            var iv = RandomNumberGenerator.GetBytes(12);
             return (key, iv);
         }
-
+        public byte[] GenerateKeyFromPassword(string password)
+        {
+            var salt = new byte[16]; 
+            using var deriveBytes = new Rfc2898DeriveBytes(password, salt, 100000, HashAlgorithmName.SHA512);
+            return deriveBytes.GetBytes(32); 
+        }
         public void GenerateAndSaveKey()
         {
             var (key, _) = GenerateKeyAndIv();
             var keyBase64 = Convert.ToBase64String(key);
             File.WriteAllText(@"key.txt", keyBase64);
         }
-        public byte[] ReadKeyFromFile()
-        {
-            try
-            {
-                var storedKeyBase64 = File.ReadAllText(@"key.txt");
-                return Convert.FromBase64String(storedKeyBase64);
-            }
-            catch (FileNotFoundException)
-            {
-                throw new FileNotFoundException("Encryption key file not found.");
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"An unexpected error occurred while reading the key file: {ex.Message}");
-            }
-        }
-
        
         public string GenerateStrongPassword(int length)
         {
@@ -61,7 +49,7 @@ namespace SecurePassManager.Services.CryptographyService
             RandomNumberGenerator.Fill(iv);
 
             byte[] encryptedPassword;
-            var tag = new byte[16]; // GCM tag length is 128 bits (16 bytes)
+            var tag = new byte[16]; 
 
             using (var aesGcm = new AesGcm(key))
             {
@@ -70,7 +58,6 @@ namespace SecurePassManager.Services.CryptographyService
                 aesGcm.Encrypt(iv, passwordBytes, encryptedPassword, tag);
             }
 
-            // Combine IV, encrypted password, and tag into a single array for storage.
             var result = new byte[iv.Length + encryptedPassword.Length + tag.Length];
             iv.CopyTo(result, 0);
             encryptedPassword.CopyTo(result, iv.Length);
@@ -79,45 +66,25 @@ namespace SecurePassManager.Services.CryptographyService
             return result;
         }
 
-
-        public string DecryptPassword(string password, byte[] key)
+        public string DecryptPassword(byte[] encryptedData, byte[] key)
         {
-            var encryptedDataWithIvTag = Convert.FromBase64String(password);
-
             const int ivLength = 12; 
             const int tagLength = 16; 
-            if (encryptedDataWithIvTag.Length < ivLength + tagLength)
-            {
-                throw new ArgumentException("Invalid encrypted data length.");
-            }
-
             var iv = new byte[ivLength];
             var tag = new byte[tagLength];
-            var encryptedPassword = new byte[encryptedDataWithIvTag.Length - ivLength - tagLength];
+            var encryptedPassword = new byte[encryptedData.Length - ivLength - tagLength];
 
-            Array.Copy(encryptedDataWithIvTag, 0, iv, 0, ivLength);
-            Array.Copy(encryptedDataWithIvTag, ivLength, encryptedPassword, 0, encryptedPassword.Length);
-            Array.Copy(encryptedDataWithIvTag, encryptedDataWithIvTag.Length - tagLength, tag, 0, tagLength);
+            Array.Copy(encryptedData, 0, iv, 0, ivLength);
+            Array.Copy(encryptedData, ivLength, encryptedPassword, 0, encryptedPassword.Length);
+            Array.Copy(encryptedData, encryptedData.Length - tagLength, tag, 0, tagLength);
 
+            using var aesGcm = new AesGcm(key);
             var passwordBytes = new byte[encryptedPassword.Length];
+            aesGcm.Decrypt(iv, encryptedPassword, tag, passwordBytes);
+            var password = Encoding.UTF8.GetString(passwordBytes);
 
-            using (var aesGcm = new AesGcm(key))
-            {
-                aesGcm.Decrypt(iv, encryptedPassword, tag, passwordBytes);
-            }
-            return Encoding.UTF8.GetString(passwordBytes);
+            return password;
         }
-
-
-        public byte[] HashDataUsingSha512(string data)
-        {
-            return SHA512.HashData(Encoding.UTF8.GetBytes(data));
-        }
-
-        public byte[] CreateHmacSha256(byte[] data, byte[] key)
-        {
-            using var hmac = new HMACSHA256(key);
-            return hmac.ComputeHash(data);
-        }
+        
     }
 }
